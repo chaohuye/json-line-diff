@@ -22,7 +22,7 @@ console.log(diff(json1, json2));
 
 output: 
 
-```json
+```
 { oldLines:
    [ { value: '{', line: 0, removed: false, path: 'root' },
      { value: '  "removed": true,',
