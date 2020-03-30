@@ -1,0 +1,13 @@
+{
+  "name": "json-line-diff",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "cli-color": "~0.1.6",
+    "difflib": "~0.2.1",
+    "dreamopt": "~0.6.0"
+  },
+  "author": "nossika",
+  "license": "MIT"
+}
