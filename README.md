@@ -1,6 +1,6 @@
 # json-line-diff
 
-diff json side-by-side. based on [json-dif](https://www.npmjs.com/package/json-diff)
+diff json side-by-side. (based on [json-diff](https://www.npmjs.com/package/json-diff))
 
 usage: 
 
