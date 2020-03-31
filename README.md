@@ -2,7 +2,7 @@
 
 diff json side-by-side. (based on [json-diff](https://www.npmjs.com/package/json-diff))
 
-usage: 
+usage:
 
 ```js
 import { diff } from 'json-line-diff';
@@ -51,3 +51,11 @@ output:
      { value: '  ]', line: 6, added: false, path: 'root.arr' },
      { value: '}', line: 7, added: false, path: 'root' } ] }
 ```
+
+use options:
+
+`diff(json1, json2, { indent, splitter })`
+
+- indent: indent for line.value, defaults to 2
+
+- splitter: splitter for line.path, defaults to "."
