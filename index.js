@@ -17,7 +17,7 @@ exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
   const oldLines = [];
   const newLines = [];
 
-  function walkDiff(val, key = '', path = 'root', level = 0, isOldLast = true, isNewLast = true) {
+  function walkDiff(val, key = '', path = '', level = 0, isOldLast = true, isNewLast = true) {
     switch (true) {
     case val instanceof Array: {
       if (!val.length) {
@@ -56,7 +56,7 @@ exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
             break;
           }
           case '~':
-            walkDiff(data, '', `${path}${splitter}${i}`, level + 1, isOldLast, isNewLast);
+            walkDiff(data, '', `${path ? path + splitter : ''}${i}`, level + 1, isOldLast, isNewLast);
             break;
           }
         });
@@ -125,7 +125,7 @@ exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
               oldLines.push(null);
             });
           } else {
-            walkDiff(val[key], key, `${path}${splitter}${key}`, level + 1, isOldLast, isNewLast);
+            walkDiff(val[key], key, `${path ? path + splitter : ''}${key}`, level + 1, isOldLast, isNewLast);
           }
         });
 
