@@ -4,13 +4,15 @@
 const jsonDiff = require('./lib/json-diff');
 
 const INDENT = 2;
-const SPLITTER = '.';
+const OBJ_SPLITTER = (key) => `.${key}`;
+const ARR_SPLITTER = (key) => `[${key}]`;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 
-exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
+exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } = {}) {
   indent = indent === undefined ? INDENT : indent;
-  splitter = splitter === undefined ? SPLITTER : splitter;
+  objSplitter = typeof objSplitter === 'function' ? objSplitter : OBJ_SPLITTER;
+  arrSplitter = typeof arrSplitter === 'function' ? arrSplitter : ARR_SPLITTER;
 
   const sourceDiff = jsonDiff.diff(oldJson, newJson);
 
@@ -34,7 +36,7 @@ exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
           const isOldLast = i === lastIndexForOld;
           const isNewLast = i === lastIndexForNew;
 
-          const subPath = `${path ? path + splitter : ''}${i}`;
+          const subPath = path ? path + arrSplitter(i) : i;
 
           switch (type) {
           case ' ':
@@ -111,7 +113,7 @@ exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
           if (/__deleted$/.test(key)) {
             const data = val[key];
             key = key.replace(/__deleted$/, '');
-            const subPath = `${path ? path + splitter : ''}${key}`;
+            const subPath = path ? path + objSplitter(key) : key;
 
             const strs = JSON.stringify(data, null, indent).split('\n');
             strs.forEach((str, i) => {
@@ -121,7 +123,7 @@ exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
           } else if (/__added$/.test(key)) {
             const data = val[key];
             key = key.replace(/__added$/, '');
-            const subPath = `${path ? path + splitter : ''}${key}`;
+            const subPath = path ? path + objSplitter(key) : key;
 
             const strs = JSON.stringify(data, null, indent).split('\n');
             strs.forEach((str, i) => {
@@ -129,7 +131,7 @@ exports.diff = function(oldJson, newJson, { indent, splitter } = {}) {
               oldLines.push(null);
             });
           } else {
-            const subPath = `${path ? path + splitter : ''}${key}`;
+            const subPath = path ? path + objSplitter(key) : key;
             walkDiff(val[key], key, subPath, level + 1, isOldLast, isNewLast);
           }
         });
