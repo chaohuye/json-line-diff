@@ -15,9 +15,30 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
   arrSplitter = typeof arrSplitter === 'function' ? arrSplitter : ARR_SPLITTER;
 
   const sourceDiff = jsonDiff.diff(oldJson, newJson);
-
+  
   const oldLines = [];
   const newLines = [];
+
+  function walkJson(val, key, path, level, isLast, type, preIsObject = true) {
+    if (val instanceof Array) {
+      addLine('', preIsObject ? key : '', path, level, false, '[', true, type);
+      val.forEach((item, index) => {
+        const subPath = path ? path + arrSplitter(index) : index;
+        walkJson(item, key, subPath, level + 1, index === val.length - 1, type, false);
+      });
+      addLine('', '', path, level, !isLast, ']', true, type);
+    } else if (val instanceof Object) {
+      const keys = Object.keys(val);
+      addLine('', preIsObject ? key : '', path, level, false, '{', true, type);
+      keys.forEach((keyItem, index) => {
+        const subPath = path ? path + objSplitter(keyItem) : keyItem;
+        walkJson(val[keyItem], keyItem, subPath, level + 1, index === keys.length - 1, type);
+      });
+      addLine('', '', path, level, !isLast, '}', true, type);
+    } else {
+      addLine('', key, path, level, !isLast, val, true, type);
+    }
+  }
 
   function walkDiff(val, key = '', path = '', level = 0, isOldLast = true, isNewLast = true) {
     switch (true) {
@@ -31,11 +52,11 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
 
         const lastIndexForNew = val.length - 1 - val.slice().reverse().findIndex(([ type ]) => type !== '-');
         const lastIndexForOld = val.length - 1 - val.slice().reverse().findIndex(([ type ]) => type !== '+');
-
+        
         val.forEach(([ type, data ], i) => {
           const isOldLast = i === lastIndexForOld;
           const isNewLast = i === lastIndexForNew;
-
+          
           const subPath = path ? path + arrSplitter(i) : i;
 
           switch (type) {
@@ -84,15 +105,11 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
           addLine('', i === 0 ? key : '', path, level, i === strs.length - 1 ? !isNewLast : false, str, false, 'new');
         });
       } else if ('__old' in val && '__new' in val) {
-        const oldStrs = JSON.stringify(val.__old, null, indent).split('\n');
-        oldStrs.forEach((str, i) => {
-          addLine('', i === 0 ? key : '', path, level, i === oldStrs.length - 1 ? !isOldLast : false, str, true, 'old');
-        });
+        walkJson(val.__old, key, path, level, isOldLast, 'old');
+        walkJson(val.__new, key, path, level, isNewLast, 'new');
 
+        const oldStrs = JSON.stringify(val.__old, null, indent).split('\n');
         const newStrs = JSON.stringify(val.__new, null, indent).split('\n');
-        newStrs.forEach((str, i) => {
-          addLine('', i === 0 ? key : '', path, level, i === newStrs.length - 1 ? !isNewLast : false, str, true, 'new');
-        });
 
         if (oldStrs.length > newStrs.length) {
           newLines.push(...new Array(oldStrs.length - newStrs.length).fill(null));
