@@ -21,6 +21,10 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
 
   function walkJson(val, key, path, level, isLast, type, preIsObject = true) {
     if (val instanceof Array) {
+      if (!val.length) {
+        addLine('', preIsObject ? key : '', path, level, false, '[]', true, type);
+        return;
+      }
       addLine('', preIsObject ? key : '', path, level, false, '[', true, type);
       val.forEach((item, index) => {
         const subPath = path ? path + arrSplitter(index) : index;
@@ -29,6 +33,10 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
       addLine('', '', path, level, !isLast, ']', true, type);
     } else if (val instanceof Object) {
       const keys = Object.keys(val);
+      if (!keys.length) {
+        addLine('', preIsObject ? key : '', path, level, false, '{}', true, type);
+        return;
+      }
       addLine('', preIsObject ? key : '', path, level, false, '{', true, type);
       keys.forEach((keyItem, index) => {
         const subPath = path ? path + objSplitter(keyItem) : keyItem;
