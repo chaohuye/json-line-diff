@@ -15,7 +15,7 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
   arrSplitter = typeof arrSplitter === 'function' ? arrSplitter : ARR_SPLITTER;
 
   const sourceDiff = jsonDiff.diff(oldJson, newJson);
-  
+
   const oldLines = [];
   const newLines = [];
 
@@ -73,17 +73,17 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
             addLine(data, '', subPath, level + 1, !isNewLast, '', false, 'new');
             break;
           case '+': {
+            walkJson(data, '', subPath, level + 1, isNewLast, 'new', false);
             const strs = JSON.stringify(data, null, indent).split('\n');
-            strs.forEach((str, i) => {
-              addLine('', '', subPath, level + 1, i === strs.length - 1 ? !isNewLast : false, str, true, 'new');
+            strs.forEach(() => {
               oldLines.push(null);
             });
             break;
           }
           case '-': {
+            walkJson(data, '', subPath, level + 1, isOldLast, 'old', false);
             const strs = JSON.stringify(data, null, indent).split('\n');
-            strs.forEach((str, i) => {
-              addLine('', '', subPath, level + 1, i === strs.length - 1 ? !isOldLast : false, str, true, 'old');
+            strs.forEach(() => {
               newLines.push(null);
             });
             break;
@@ -138,21 +138,21 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
           if (/__deleted$/.test(key)) {
             const data = val[key];
             key = key.replace(/__deleted$/, '');
-            const subPath = path ? path + objSplitter(key) : key;
 
+            walkJson(data, key, key, level + 1, isOldLast, 'old');
+            
             const strs = JSON.stringify(data, null, indent).split('\n');
-            strs.forEach((str, i) => {
-              addLine('', i === 0 ? key : '', subPath, level + 1, i === strs.length - 1 ? !isOldLast : false, str, true, 'old');
+            strs.forEach(() => {
               newLines.push(null);
             });
           } else if (/__added$/.test(key)) {
             const data = val[key];
             key = key.replace(/__added$/, '');
-            const subPath = path ? path + objSplitter(key) : key;
+
+            walkJson(data, key, key, level + 1, isNewLast, 'new');
 
             const strs = JSON.stringify(data, null, indent).split('\n');
-            strs.forEach((str, i) => {
-              addLine('', i === 0 ? key : '', subPath, level + 1, i === strs.length - 1 ? !isNewLast : false, str, true, 'new');
+            strs.forEach(() => {
               oldLines.push(null);
             });
           } else {
@@ -208,5 +208,3 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
 
   return diffResult;
 }
-
-
