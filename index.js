@@ -4,22 +4,27 @@
 const jsonDiff = require('./lib/json-diff');
 
 const INDENT = 2;
-const OBJ_SPLITTER = (key) => `.${key}`;
-const ARR_SPLITTER = (key) => `[${key}]`;
+const DEFAULT_OBJ_SPLITTER = (key) => `.${key}`;
+const DEFAULT_ARR_SPLITTER = (key) => `[${key}]`;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 
+const LINE_TYPE = {
+  OLD: 'old',
+  NEW: 'new',
+};
+
 exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } = {}) {
   indent = indent === undefined ? INDENT : indent;
-  objSplitter = typeof objSplitter === 'function' ? objSplitter : OBJ_SPLITTER;
-  arrSplitter = typeof arrSplitter === 'function' ? arrSplitter : ARR_SPLITTER;
+  objSplitter = typeof objSplitter === 'function' ? objSplitter : DEFAULT_OBJ_SPLITTER;
+  arrSplitter = typeof arrSplitter === 'function' ? arrSplitter : DEFAULT_ARR_SPLITTER;
 
   const sourceDiff = jsonDiff.diff(oldJson, newJson);
 
   const oldLines = [];
   const newLines = [];
 
-  function walkJson(val, key, path, level, isLast, type, preIsObject = true) {
+  function walkJSON(val, key = '', path = '', level = 0, isLast = true, type = LINE_TYPE.OLD, preIsObject = true) {
     if (val instanceof Array) {
       if (!val.length) {
         addLine('', preIsObject ? key : '', path, level, false, '[]', true, type);
@@ -28,7 +33,7 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
       addLine('', preIsObject ? key : '', path, level, false, '[', true, type);
       val.forEach((item, index) => {
         const subPath = path ? path + arrSplitter(index) : index;
-        walkJson(item, key, subPath, level + 1, index === val.length - 1, type, false);
+        walkJSON(item, key, subPath, level + 1, index === val.length - 1, type, false);
       });
       addLine('', '', path, level, !isLast, ']', true, type);
     } else if (val instanceof Object) {
@@ -40,7 +45,7 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
       addLine('', preIsObject ? key : '', path, level, false, '{', true, type);
       keys.forEach((keyItem, index) => {
         const subPath = path ? path + objSplitter(keyItem) : keyItem;
-        walkJson(val[keyItem], keyItem, subPath, level + 1, index === keys.length - 1, type);
+        walkJSON(val[keyItem], keyItem, subPath, level + 1, index === keys.length - 1, type);
       });
       addLine('', '', path, level, !isLast, '}', true, type);
     } else {
@@ -52,11 +57,11 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
     switch (true) {
     case val instanceof Array: {
       if (!val.length) {
-        addLine('', key, path, level, !isOldLast, '[]', false, 'old');
-        addLine('', key, path, level, !isNewLast, '[]', false, 'new');
+        addLine('', key, path, level, !isOldLast, '[]', false, LINE_TYPE.OLD);
+        addLine('', key, path, level, !isNewLast, '[]', false, LINE_TYPE.NEW);
       } else {
-        addLine('', key, path, level, false, '[', false, 'old');
-        addLine('', key, path, level, false, '[', false, 'new');
+        addLine('', key, path, level, false, '[', false, LINE_TYPE.OLD);
+        addLine('', key, path, level, false, '[', false, LINE_TYPE.NEW);
 
         const lastIndexForNew = val.length - 1 - val.slice().reverse().findIndex(([ type ]) => type !== '-');
         const lastIndexForOld = val.length - 1 - val.slice().reverse().findIndex(([ type ]) => type !== '+');
@@ -69,11 +74,11 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
 
           switch (type) {
           case ' ':
-            addLine(data, '', subPath, level + 1, !isOldLast, '', false, 'old');
-            addLine(data, '', subPath, level + 1, !isNewLast, '', false, 'new');
+            addLine(data, '', subPath, level + 1, !isOldLast, '', false, LINE_TYPE.OLD);
+            addLine(data, '', subPath, level + 1, !isNewLast, '', false, LINE_TYPE.NEW);
             break;
           case '+': {
-            walkJson(data, '', subPath, level + 1, isNewLast, 'new', false);
+            walkJSON(data, '', subPath, level + 1, isNewLast, LINE_TYPE.NEW, false);
             const strs = JSON.stringify(data, null, indent).split('\n');
             strs.forEach(() => {
               oldLines.push(null);
@@ -81,7 +86,7 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
             break;
           }
           case '-': {
-            walkJson(data, '', subPath, level + 1, isOldLast, 'old', false);
+            walkJSON(data, '', subPath, level + 1, isOldLast, LINE_TYPE.OLD, false);
             const strs = JSON.stringify(data, null, indent).split('\n');
             strs.forEach(() => {
               newLines.push(null);
@@ -94,8 +99,8 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
           }
         });
 
-        addLine('', '', path, level, !isOldLast, ']', false, 'old');
-        addLine('', '', path, level, !isNewLast, ']', false, 'new');
+        addLine('', '', path, level, !isOldLast, ']', false, LINE_TYPE.OLD);
+        addLine('', '', path, level, !isNewLast, ']', false, LINE_TYPE.NEW);
       }
 
       break;
@@ -104,17 +109,17 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
       const keys = Object.keys(val);
 
       if (!keys.length) {
-        addLine('', key, path, level, !isOldLast, '{}', false, 'old');
-        addLine('', key, path, level, !isNewLast, '{}', false, 'new');
+        addLine('', key, path, level, !isOldLast, '{}', false, LINE_TYPE.OLD);
+        addLine('', key, path, level, !isNewLast, '{}', false, LINE_TYPE.NEW);
       } else if ('__val' in val) {
         const strs = JSON.stringify(val.__val, null, indent).split('\n');
         strs.forEach((str, i) => {
-          addLine('', i === 0 ? key : '', path, level, i === strs.length - 1 ? !isOldLast : false, str, false, 'old');
-          addLine('', i === 0 ? key : '', path, level, i === strs.length - 1 ? !isNewLast : false, str, false, 'new');
+          addLine('', i === 0 ? key : '', path, level, i === strs.length - 1 ? !isOldLast : false, str, false, LINE_TYPE.OLD);
+          addLine('', i === 0 ? key : '', path, level, i === strs.length - 1 ? !isNewLast : false, str, false, LINE_TYPE.NEW);
         });
       } else if ('__old' in val && '__new' in val) {
-        walkJson(val.__old, key, path, level, isOldLast, 'old');
-        walkJson(val.__new, key, path, level, isNewLast, 'new');
+        walkJSON(val.__old, key, path, level, isOldLast, LINE_TYPE.OLD);
+        walkJSON(val.__new, key, path, level, isNewLast, LINE_TYPE.NEW);
 
         const oldStrs = JSON.stringify(val.__old, null, indent).split('\n');
         const newStrs = JSON.stringify(val.__new, null, indent).split('\n');
@@ -125,8 +130,8 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
           oldLines.push(...new Array(newStrs.length - oldStrs.length).fill(null));
         }
       } else {
-        addLine('', key, path, level, false, '{', false, 'old');
-        addLine('', key, path, level, false, '{', false, 'new');
+        addLine('', key, path, level, false, '{', false, LINE_TYPE.OLD);
+        addLine('', key, path, level, false, '{', false, LINE_TYPE.NEW);
 
         const lastIndexForNew = keys.length - 1 - keys.slice().reverse().findIndex(key => !/__deleted$/.test(key));
         const lastIndexForOld = keys.length - 1 - keys.slice().reverse().findIndex(key => !/__added$/.test(key));
@@ -138,8 +143,9 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
           if (/__deleted$/.test(key)) {
             const data = val[key];
             key = key.replace(/__deleted$/, '');
+            const subPath = path ? path + objSplitter(key) : key;
 
-            walkJson(data, key, key, level + 1, isOldLast, 'old');
+            walkJSON(data, key, subPath, level + 1, isOldLast, LINE_TYPE.OLD);
             
             const strs = JSON.stringify(data, null, indent).split('\n');
             strs.forEach(() => {
@@ -148,8 +154,9 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
           } else if (/__added$/.test(key)) {
             const data = val[key];
             key = key.replace(/__added$/, '');
+            const subPath = path ? path + objSplitter(key) : key;
 
-            walkJson(data, key, key, level + 1, isNewLast, 'new');
+            walkJSON(data, key, subPath, level + 1, isNewLast, LINE_TYPE.NEW);
 
             const strs = JSON.stringify(data, null, indent).split('\n');
             strs.forEach(() => {
@@ -161,8 +168,8 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
           }
         });
 
-        addLine('', '', path, level, !isOldLast, '}', false, 'old');
-        addLine('', '', path, level, !isNewLast, '}', false, 'new');
+        addLine('', '', path, level, !isOldLast, '}', false, LINE_TYPE.OLD);
+        addLine('', '', path, level, !isNewLast, '}', false, LINE_TYPE.NEW);
       }
       break;
     }
@@ -174,11 +181,11 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
   let oldLine = 0;
   let newLine = 0;
 
-  function addLine(val, key, path, level, comma, addition = '', modified = false, type = '') {
+  function addLine(val, key, path, level, comma, addition = '', modified = false, type = LINE_TYPE.OLD) {
     const value = `${''.padStart(level * indent)}${key ? `"${key}": ` : ''}${addition || (typeof val === 'string' ? `"${val}"` : val)}${comma ? ',' : ''}`;
 
     switch (type) {
-    case 'old': {
+    case LINE_TYPE.OLD: {
       oldLines.push({
         value,
         line: oldLine++,
@@ -187,7 +194,7 @@ exports.diff = function(oldJson, newJson, { indent, objSplitter, arrSplitter } =
       });
       break;
     }
-    case 'new': {
+    case LINE_TYPE.NEW: {
       newLines.push({
         value,
         line: newLine++,
